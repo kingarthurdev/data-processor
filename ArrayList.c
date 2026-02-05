@@ -21,7 +21,7 @@ void newPDArrayList(PDArrayList *list)
     list->data = malloc(sizeof(PD) * list->capacity);
 }
 
-void addNode(PDArrayList *list, PD *item)
+void addPD(PDArrayList *list, PD *item)
 {
     if (list->size == list->capacity)
     {
