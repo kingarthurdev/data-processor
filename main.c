@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ArrayList.h"
+#include <errno.h>
+#include <stdint.h>
 
 // yeah yeah ik I should put this in a seperate file, but I'll do that later if I have time
 typedef struct StringBuilder
@@ -79,6 +81,23 @@ char *convertPopMacro(char *input);
 char *parseAndFormatArgs(char *inputString);
 void autoAdd(char *inputString);
 void autoAddMacro(char *inputString);
+void pushOtherInIfExists(int targetType);
+
+// new stuff
+void processIntermediateIntoBinary(char *intermediateFilePath, char *outputBinaryFilePath);
+uint8_t getOpcode(char *line);
+uint32_t processIntermediateLine(char *line);
+uint32_t processOpcodeIntoFinalForm(uint8_t opcode, char *line);
+uint32_t convertR(uint8_t opcode, uint8_t reg);
+uint32_t convertRR(uint8_t opcode, uint8_t rd, uint8_t rs);
+uint32_t convertRL(uint8_t opcode, uint8_t rd, int32_t L);
+uint32_t convertRRR(uint8_t opcode, uint8_t rd, uint8_t rs, uint8_t rt);
+uint32_t convertL(uint8_t opcode, int32_t L);
+uint32_t convertNone(uint8_t opcode);
+uint32_t convertRRRL(uint8_t opcode, uint8_t rd, uint8_t rs, uint8_t rt, int32_t L);
+uint32_t convertMOV(uint8_t opcode, char *line);
+uint8_t parseReg(char *registry);
+uint64_t parse64BitNums(char *input);
 
 PDArrayList listOfLabels;
 const char delimiters[] = ", \t\n\r";
@@ -118,8 +137,8 @@ int main(int argc, char *argv[])
 		fptr = fopen(intermediateOutputFilePath, "w");
 		fprintf(fptr, "%s", codeAndDataCombined.data);
 		fclose(fptr);
-
-		//printf("%s", codeAndDataCombined.data);
+		printf("%s", codeAndDataCombined.data);
+		processIntermediateIntoBinary(intermediateOutputFilePath, binaryOutputFilePath);
 	}
 	else
 	{
@@ -159,7 +178,7 @@ void processInputFile(char *inputFilePath)
 		}
 
 		// put the last bit in
-		if (type == 1 && code.size > 0)
+		if (code.size > 0)
 		{
 			if (isFirstLineInOutput)
 			{
@@ -172,7 +191,7 @@ void processInputFile(char *inputFilePath)
 			}
 			addString(&codeAndDataCombined, code.data);
 		}
-		else if (type == 0 && data.size > 0)
+		if (data.size > 0)
 		{
 			if (isFirstLineInOutput)
 			{
@@ -185,8 +204,6 @@ void processInputFile(char *inputFilePath)
 			}
 			addString(&codeAndDataCombined, data.data);
 		}
-
-		printf("final output: %s", codeAndDataCombined.data);
 	}
 	else
 	{
@@ -210,14 +227,73 @@ testingReturnType processLine(char *lineInput)
 		else if (type == 0) // .data mode - process as 64 bit data value
 		{
 			tempThingy.type = 0;
-			char *valuePart = lineInput + 1; // skip the tab
+			char *valuePart = lineInput + 1; // skip the tab with extra plus 1
 			stripChars(valuePart, ' ');
 			stripChars(valuePart, '\n');
 
-			long long value = strtoll(valuePart, NULL, 0);
+			errno = 0;
+			char *end;
+			unsigned long long value = strtoull(valuePart, &end, 0);
+
+			if (end == valuePart)
+			{
+				throwError("ERROR! INVALID DATA PASSED - not a long");
+			}
+
+			if (errno == ERANGE)
+			{
+				throwError("ERROR! Data value exceeds 64-bit range");
+			}
+
+			//pushOtherInIfExists(0); // push all the code in if needed before adding more data
+			else if ((lineInput[0]) == '.')
+{ // either .code or .data
+	int newType = -1;
+	if (strncmp(lineInput, ".data", 5) == 0)
+	{
+		newType = 0;
+		pushOtherInIfExists(0); // flush any pending code first
+		if (isFirstLineInOutput)
+		{
+			addString(&codeAndDataCombined, ".data");
+			isFirstLineInOutput = 0;
+		}
+		else
+		{
+			addString(&codeAndDataCombined, "\n.data");
+		}
+		sbClear(&data);
+	}
+	else if (strncmp(lineInput, ".code", 5) == 0)
+	{
+		newType = 1;
+		pushOtherInIfExists(1); // flush any pending data first
+		if (isFirstLineInOutput)
+		{
+			addString(&codeAndDataCombined, ".code");
+			isFirstLineInOutput = 0;
+		}
+		else
+		{
+			addString(&codeAndDataCombined, "\n.code");
+		}
+		sbClear(&code);
+	}
+	else
+	{
+		throwError("ERROR! INVALID LINE STARTING WITH DOT!");
+	}
+
+	tempThingy.type = newType;
+	type = newType;
+	if (newType == 1)
+	{
+		hasSeenAtLeast1Code = 1;
+	}
+}
 
 			char temp[64];
-			sprintf(temp, "\n\t%lld", value);
+			sprintf(temp, "\n\t%llu", value);
 			addString(&data, temp);
 
 			incrementBytes(type); // add 8 bytes for data
@@ -261,39 +337,7 @@ testingReturnType processLine(char *lineInput)
 			throwError("ERROR! INVALID LINE STARTING WITH DOT!");
 		}
 
-		// add new stuff only if new type so subsequent stuff gets combined
-		if (type != -1 && type != newType)
-		{
-			if (type == 1 && code.size > 0)
-			{
-				if (isFirstLineInOutput)
-				{
-					addString(&codeAndDataCombined, ".code");
-					isFirstLineInOutput = 0;
-				}
-				else
-				{
-					addString(&codeAndDataCombined, "\n.code");
-				}
-				addString(&codeAndDataCombined, code.data);
-				sbClear(&code);
-			}
-			else if (type == 0 && data.size > 0)
-			{
-				if (isFirstLineInOutput)
-				{
-					addString(&codeAndDataCombined, ".data");
-					isFirstLineInOutput = 0;
-				}
-				else
-				{
-					addString(&codeAndDataCombined, "\n.data");
-				}
-				addString(&codeAndDataCombined, data.data);
-				sbClear(&data);
-			}
-		}
-
+		// just update the type since adding is done when hits new type
 		tempThingy.type = newType;
 		type = newType;
 		if (newType == 1)
@@ -350,7 +394,7 @@ void processInstructions(testingReturnType *input, char *lineInput)
 		validateArgs(lineInput, FMT_RRR);
 		autoAdd(lineInput);
 	}
-		else if (startsWith("call", lineInput) || startsWith("br", lineInput))
+	else if (startsWith("call", lineInput) || startsWith("br", lineInput))
 	{
 		validateArgs(lineInput, FMT_R);
 		autoAdd(lineInput);
@@ -551,7 +595,7 @@ void runTests()
 // halt
 char *convertHaltMacro(char *input)
 {
-	return "\n\tpriv r0, r0, r0, 0x0";
+	return "\n\tpriv r0, r0, r0, 0";
 }
 
 // clr rd
@@ -720,7 +764,7 @@ char *convertPopMacro(char *input)
 
 char *parseAndFormatArgs(char *inputString)
 {
-	char *outputLine = malloc(sizeof(char) * 256);
+	char *outputLine = malloc(sizeof(char) * 70); // should be more than enough and I'm lowk too lazy to do malloc
 	outputLine[0] = '\0';
 	char delims[] = " ,\t\n\r";
 	char *copy = malloc(sizeof(char) * (strlen(inputString) + 1));
@@ -753,15 +797,50 @@ char *parseAndFormatArgs(char *inputString)
 	return outputLine;
 }
 
+// make sure all data from other one is pushed in iff it exists
+void pushOtherInIfExists(int targetType)
+{
+	if (targetType == 1 && data.size > 0)
+	{
+		if (isFirstLineInOutput)
+		{
+			addString(&codeAndDataCombined, ".data");
+			isFirstLineInOutput = 0;
+		}
+		else
+		{
+			addString(&codeAndDataCombined, "\n.data");
+		}
+		addString(&codeAndDataCombined, data.data);
+		sbClear(&data);
+	}
+	else if (targetType == 0 && code.size > 0)
+	{
+		if (isFirstLineInOutput)
+		{
+			addString(&codeAndDataCombined, ".code");
+			isFirstLineInOutput = 0;
+		}
+		else
+		{
+			addString(&codeAndDataCombined, "\n.code");
+		}
+		addString(&codeAndDataCombined, code.data);
+		sbClear(&code);
+	}
+}
+
 void autoAdd(char *inputString)
 {
 	// 0 for data mode, 1 for int, -1 for unset
 	if (type == 0)
 	{
+		pushOtherInIfExists(0);
 		addString(&data, parseAndFormatArgs(inputString));
 	}
 	else if (type == 1)
 	{
+		pushOtherInIfExists(1);
 		addString(&code, parseAndFormatArgs(inputString));
 	}
 	else
@@ -774,14 +853,359 @@ void autoAddMacro(char *inputString)
 {
 	if (type == 0)
 	{
+		pushOtherInIfExists(0);
 		addString(&data, inputString);
 	}
 	else if (type == 1)
 	{
+		pushOtherInIfExists(1);
 		addString(&code, inputString);
 	}
 	else
 	{
 		throwError("ERROR! Once again called before type set somehow...");
 	}
+}
+
+/// Pretend this is a new file without all the other stuff for cleanliness
+//-1 for unset, 0 for data, 1 for code
+int currentType = -1;
+
+void processIntermediateIntoBinary(char *intermediateFilePath, char *outputBinaryFilePath)
+{
+	FILE *inputFile;
+	FILE *outputFile = fopen(outputBinaryFilePath, "wb");
+	if ((inputFile = fopen(intermediateFilePath, "r")) != NULL)
+	{
+		char line[1024];
+		int BUFFER_SIZE = 1024; // Accepting 1024 chars in case they feed in a decently long line
+		while (fgets(line, BUFFER_SIZE, inputFile) != NULL)
+		{
+			uint32_t result = processIntermediateLine(line);
+			fprintf(outputFile, "%X", result);
+		}
+	}
+	else
+	{
+		throwError("ERROR! NO INTERMEDIATE FOUND!");
+	}
+	fclose(outputFile);
+}
+uint8_t getOpcode(char *line)
+{
+	char *copy = malloc(sizeof(char) * (strlen(line) + 1));
+	strcpy(copy, line);
+	char *token = strtok(copy, delimiters); // should be instruction
+
+	if (strcmp(token, "and") == 0)
+		return 0x0;
+	if (strcmp(token, "or") == 0)
+		return 0x1;
+	if (strcmp(token, "xor") == 0)
+		return 0x2;
+	if (strcmp(token, "not") == 0)
+		return 0x3;
+	if (strcmp(token, "shftr") == 0)
+		return 0x4;
+	if (strcmp(token, "shftri") == 0)
+		return 0x5;
+	if (strcmp(token, "shftl") == 0)
+		return 0x6;
+	if (strcmp(token, "shftli") == 0)
+		return 0x7;
+	if (strcmp(token, "br") == 0)
+		return 0x8;
+	if (strcmp(token, "brr") == 0)
+	{
+		token = strtok(NULL, delimiters);
+		if (token[0] == 'r' || token[0] == 'R')
+		{
+			return 0x9;
+		}
+		else
+		{
+			return 0xa;
+		}
+	}
+	if (strcmp(token, "brnz") == 0)
+		return 0xb;
+	if (strcmp(token, "call") == 0)
+		return 0xc;
+	if (strcmp(token, "return") == 0)
+		return 0xd;
+	if (strcmp(token, "brgt") == 0)
+		return 0xe;
+	if (strcmp(token, "priv") == 0)
+		return 0xf;
+	if (strcmp(token, "mov") == 0)
+	{
+		token = strtok(NULL, delimiters);
+		if (token[0] == '(')
+		{
+			return 0x13;
+		}
+		else if (token[0] == 'r')
+		{
+			token = strtok(NULL, delimiters);
+			if (token[0] == '(')
+			{
+				return 0x10;
+			}
+			else if (token[0] == 'r')
+			{
+				return 0x11;
+			}
+			else
+			{
+				return 0x12;
+			}
+		}
+		throwError("Unable to parse MOV!!!!");
+	}
+	if (strcmp(token, "addf") == 0)
+		return 0x14;
+	if (strcmp(token, "subf") == 0)
+		return 0x15;
+	if (strcmp(token, "mulf") == 0)
+		return 0x16;
+	if (strcmp(token, "divf") == 0)
+		return 0x17;
+	if (strcmp(token, "add") == 0)
+		return 0x18;
+	if (strcmp(token, "addi") == 0)
+		return 0x19;
+	if (strcmp(token, "sub") == 0)
+		return 0x1a;
+	if (strcmp(token, "subi") == 0)
+		return 0x1b;
+	if (strcmp(token, "mul") == 0)
+		return 0x1c;
+	if (strcmp(token, "div") == 0)
+		return 0x1d;
+	throwError("ERROR PARSING OPCODE!");
+}
+
+uint32_t processOpcodeIntoFinalForm(uint8_t opcode, char *line)
+{
+	// a bunch of if statements based on format
+}
+
+uint32_t processIntermediateLine(char *line)
+{
+	uint8_t opcode = getOpcode(line);		// uhh, 8 is the smallest one I think, but technically only needs 4 bits
+	char *token = strtok(line, delimiters); // should be instruction
+
+	if (opcode == 0x0 || opcode == 0x1 || opcode == 0x2 || opcode == 0x4 ||
+		opcode == 0x6 || opcode == 0xc || opcode == 0xe || opcode == 0x14 ||
+		opcode == 0x15 || opcode == 0x16 || opcode == 0x17 || opcode == 0x18 ||
+		opcode == 0x1a || opcode == 0x1c || opcode == 0x1d)
+	{
+		uint8_t rd = parseReg(strtok(NULL, delimiters));
+		uint8_t rs = parseReg(strtok(NULL, delimiters));
+		uint8_t rt = parseReg(strtok(NULL, delimiters));
+		return convertRRR(opcode, rd, rs, rt);
+	}
+	else if (opcode == 0x5 || opcode == 0x7 || opcode == 0x19 || opcode == 0x1b)
+	{
+		uint8_t rd = parseReg(strtok(NULL, delimiters));
+		int32_t L = (int32_t)strtol(strtok(NULL, delimiters), NULL, 0);
+		return convertRL(opcode, rd, L);
+	}
+	else if (opcode == 0x3 || opcode == 0xb)
+	{
+		uint8_t rd = parseReg(strtok(NULL, delimiters));
+		uint8_t rs = parseReg(strtok(NULL, delimiters));
+		return convertRR(opcode, rd, rs);
+	}
+	else if (opcode == 0x8 || opcode == 0x9)
+	{
+		uint8_t rd = parseReg(strtok(NULL, delimiters));
+		return convertR(opcode, rd);
+	}
+	else if (opcode == 0xa)
+	{
+		int32_t L = (int32_t)strtol(strtok(NULL, delimiters), NULL, 0);
+		return convertL(opcode, L);
+	}
+	else if (opcode == 0xd)
+	{
+		// for return i think
+		return convertNone(opcode);
+	}
+	else if (opcode == 0xf) // priv
+	{
+		uint8_t rd = parseReg(strtok(NULL, delimiters));
+		uint8_t rs = parseReg(strtok(NULL, delimiters));
+		uint8_t rt = parseReg(strtok(NULL, delimiters));
+		int32_t L = (int32_t)strtol(strtok(NULL, delimiters), NULL, 0);
+		return convertRRRL(opcode, rd, rs, rt, L);
+	}
+	else if (opcode == 0x10 || opcode == 0x11 || opcode == 0x12 || opcode == 0x13)
+	{
+		return convertMOV(opcode, line);
+	}
+}
+
+uint32_t convertR(uint8_t opcode, uint8_t reg)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += ((reg & 0x1F) << 22);
+	return temp;
+}
+
+uint32_t convertRR(uint8_t opcode, uint8_t rd, uint8_t rs)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += ((rd & 0x1F) << 22);
+	temp += ((rs & 0x1F) << 17);
+	return temp;
+}
+
+uint32_t convertRL(uint8_t opcode, uint8_t rd, int32_t L)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += ((rd & 0x1F) << 22);
+	temp += (L & 0xFFF);
+	return temp;
+}
+
+uint32_t convertRRR(uint8_t opcode, uint8_t rd, uint8_t rs, uint8_t rt)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += ((rd & 0x1F) << 22);
+	temp += ((rs & 0x1F) << 17);
+	temp += ((rt & 0x1F) << 12);
+	return temp;
+}
+
+uint32_t convertL(uint8_t opcode, int32_t L)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += (L & 0xFFF);
+	return temp;
+}
+
+uint32_t convertNone(uint8_t opcode)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	return temp;
+}
+
+uint32_t convertRRRL(uint8_t opcode, uint8_t rd, uint8_t rs, uint8_t rt, int32_t L)
+{
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+	temp += ((rd & 0x1F) << 22);
+	temp += ((rs & 0x1F) << 17);
+	temp += ((rt & 0x1F) << 12);
+	temp += (L & 0xFFF);
+	return temp;
+}
+
+// mov has 4 forms:
+// 0x10: mov rd, (rs)(L)    - load from memory
+// 0x11: mov rd, rs         - register to register
+// 0x12: mov rd, L          - load literal (sets bits 52:63)
+// 0x13: mov (rd)(L), rs    - store to memory
+
+// TODO: fix to make sure compatable with all mov stuff
+uint32_t convertMOV(uint8_t opcode, char *line)
+{
+	char *copy = malloc(sizeof(char) * (strlen(line) + 1));
+	strcpy(copy, line);
+	char *delims = " ,\t\n\r()";
+	char *token = strtok(copy, delims);
+
+	uint32_t temp = 0;
+	temp += opcode;
+	temp <<= 27;
+
+	if (opcode == 0x10)
+	{
+		// mov rd, (rs)(L)
+		uint8_t rd = parseReg(strtok(NULL, delims));
+		uint8_t rs = parseReg(strtok(NULL, delims));
+		int32_t L = (int32_t)strtol(strtok(NULL, delims), NULL, 0);
+		temp += ((rd & 0x1F) << 22);
+		temp += ((rs & 0x1F) << 17);
+		temp += (L & 0xFFF);
+	}
+	else if (opcode == 0x11)
+	{
+		// mov rd, rs
+		uint8_t rd = parseReg(strtok(NULL, delims));
+		uint8_t rs = parseReg(strtok(NULL, delims));
+		temp += ((rd & 0x1F) << 22);
+		temp += ((rs & 0x1F) << 17);
+	}
+	else if (opcode == 0x12)
+	{
+		// mov rd, L
+		uint8_t rd = parseReg(strtok(NULL, delims));
+		int32_t L = (int32_t)strtol(strtok(NULL, delims), NULL, 0);
+		temp += ((rd & 0x1F) << 22);
+		temp += (L & 0xFFF);
+	}
+	else if (opcode == 0x13)
+	{
+		// mov (rd)(L), rs
+		uint8_t rd = parseReg(strtok(NULL, delims));
+		int32_t L = (int32_t)strtol(strtok(NULL, delims), NULL, 0);
+		uint8_t rs = parseReg(strtok(NULL, delims));
+		temp += ((rd & 0x1F) << 22);
+		temp += ((rs & 0x1F) << 17);
+		temp += (L & 0xFFF);
+	}
+
+	free(copy);
+	return temp;
+}
+
+uint8_t parseReg(char *registry)
+{
+	if (registry[0] == 'r' || registry[0] == 'R')
+	{
+		return (uint8_t)strtoul(registry + 1, NULL, 0);
+	}
+	throwError("ERROR! wut - this aint no registry!");
+}
+
+uint64_t parse64BitNums(char *input)
+{
+	//Theoretically I don't need any of these except for the tab strip, but whatevs
+	stripChars(input, ' ');
+	stripChars(input, ',');
+	stripChars(input, '\t');
+	stripChars(input, '\n');
+	stripChars(input, '\r');
+
+	errno = 0;
+	char *end;
+	uint64_t value = strtoull(input, &end, 0);
+
+	//also theoretically don't need...
+	if (end == input)
+	{
+		throwError("ERROR! Invalid 64-bit data value - not a number");
+	}
+
+	if (errno == ERANGE)
+	{
+		throwError("ERROR! 64-bit data value out of range");
+	}
+
+	return value;
 }
