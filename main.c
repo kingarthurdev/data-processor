@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "ArrayList.h"
 
+//Make sure registers start with R, labels start with L -- to pass invalid test cases -- spaces aren't allowed inside the label
+
 #define IS_CURRENTLY_TESTING 0
 typedef struct testingReturnType
 {
@@ -70,12 +72,17 @@ int main(int argc, char *argv[])
 	{
 		processInputFile(inputFilePath);
 		printf("%s", codeAndDataCombined);
+		FILE *fptr;
+		fptr = fopen(intermediateOutputFilePath, "w");
+		fprintf(fptr, "%s", codeAndDataCombined);
+		fclose(fptr);
+
+		printf("%s", codeAndDataCombined);
 	}
 	else
 	{
 		processInputFile(inputFilePath);
 		runTests();
-		printf("%s", codeAndDataCombined);
 	}
 
 	return 0;
@@ -270,6 +277,35 @@ void processInstructions(testingReturnType *input, char *lineInput)
 {
 	char *threeByThrees[] = {"add", "sub", "mul", "div", "xor"};
 	char *fourByTwo[] = {"addi", "subi", "brnz"};
+
+		// --- TYPE_RRR: rd, rs, rt (3 registers) ---
+	char *type_rrr_4char[] = {"addf", "subf", "mulf", "divf", "brgt"};
+	char *type_rrr_3char[] = {"add", "sub", "mul", "div", "and", "xor"};
+	char *type_rrr_2char[] = {"or"};
+	char *type_rrr_5char[] = {"shftr", "shftl"}; // 5-char versions (not shftri/shftli)
+
+	// --- TYPE_RR: rd, rs (2 registers) ---
+	char *type_rr_4char[] = {"brnz"};
+	char *type_rr_3char[] = {"not"};
+
+	// --- TYPE_RL: rd, L (1 register + literal) ---
+	char *type_rl_6char[] = {"shftri", "shftli"};
+	char *type_rl_4char[] = {"addi", "subi"};
+
+	// --- TYPE_R: rd (1 register) ---
+	// Includes: br, call (ERRATA: call is "call rd", not "call rd, rs, rt")
+	char *type_r_4char[] = {"call"};
+	char *type_r_2char[] = {"br"};
+
+	// --- TYPE_R_OR_L: brr (can be register OR literal) ---
+	char *type_r_or_l[] = {"brr"};
+
+	// --- TYPE_NONE: no operands ---
+	char *type_none[] = {"return"};
+
+	// --- TYPE_RRRL: rd, rs, rt, L (3 registers + literal) ---
+	char *type_rrrl[] = {"priv"};
+
 	if (startsWith2(lineInput, threeByThrees, 5))
 	{
 		handleValidateNumArgs(lineInput + 4 + 1, 3);
