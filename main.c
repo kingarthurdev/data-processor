@@ -7,8 +7,8 @@
 typedef struct StringBuilder
 {
 	char *data;
-	int size;
-	int capacity;
+	size_t size;
+	size_t capacity;
 } StringBuilder;
 
 void newStringBuilder(StringBuilder *sb)
@@ -21,7 +21,7 @@ void newStringBuilder(StringBuilder *sb)
 
 void addString(StringBuilder *sb, const char *str)
 {
-	int addsize = strlen(str);
+	size_t addsize = strlen(str);
 	if (sb->size + addsize + 1 > sb->capacity)
 	{
 		while (sb->size + addsize + 1 > sb->capacity)
@@ -114,13 +114,12 @@ int main(int argc, char *argv[])
 	if (!IS_CURRENTLY_TESTING)
 	{
 		processInputFile(inputFilePath);
-		printf("%s", codeAndDataCombined.data);
 		FILE *fptr;
 		fptr = fopen(intermediateOutputFilePath, "w");
 		fprintf(fptr, "%s", codeAndDataCombined.data);
 		fclose(fptr);
 
-		printf("%s", codeAndDataCombined.data);
+		//printf("%s", codeAndDataCombined.data);
 	}
 	else
 	{
