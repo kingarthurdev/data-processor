@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 	if (!IS_CURRENTLY_TESTING)
 	{
 		processInputFile(inputFilePath);
+		printf("%s", codeAndDataCombined);
 	}
 	else
 	{
@@ -107,8 +108,34 @@ void processInputFile(char *inputFilePath)
 		{
 			processLine(line);
 		}
-		printf("DONE! \n");
-		printf("%s\n", codeAndDataCombined);
+
+		// put the last bit in
+		if (type == 1 && code[0] != '\0')
+		{
+			if (isFirstLineInOutput)
+			{
+				strcat(codeAndDataCombined, ".code");
+				isFirstLineInOutput = 0;
+			}
+			else
+			{
+				strcat(codeAndDataCombined, "\n.code");
+			}
+			strcat(codeAndDataCombined, code);
+		}
+		else if (type == 0 && data[0] != '\0')
+		{
+			if (isFirstLineInOutput)
+			{
+				strcat(codeAndDataCombined, ".data");
+				isFirstLineInOutput = 0;
+			}
+			else
+			{
+				strcat(codeAndDataCombined, "\n.data");
+			}
+			strcat(codeAndDataCombined, data);
+		}
 	}
 	else
 	{
@@ -693,9 +720,9 @@ char *parseAndFormatArgs(char *inputString)
 {
 	char *outputLine = malloc(sizeof(char) * 50); // once again, plenty of space
 	outputLine[0] = '\0';
-	char delims[] = {" ,\t"};
+	char delims[] = " ,\t\n\r";
 	char *token = strtok(inputString, delims);
-	sprintf(outputLine + strlen(outputLine), "\n\t%s ", token); // should be the first one -- the instruction
+	sprintf(outputLine + strlen(outputLine), "\n\t%s", token); // should be the first one -- the instruction
 	token = strtok(NULL, delims);
 	int isFirst = 1;
 	while (1)
@@ -716,9 +743,9 @@ char *parseAndFormatArgs(char *inputString)
 		{
 			break;
 		}
-		token = strtok(NULL, delimiters);
+		token = strtok(NULL, delims);
 	}
-	//printf("Here's what I'm returning: %s\n", outputLine);
+	// printf("Here's what I'm returning: %s\n", outputLine);
 	return outputLine;
 }
 
