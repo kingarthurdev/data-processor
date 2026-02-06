@@ -257,6 +257,9 @@ testingReturnType processLine(char *lineInput)
 	}
 	else if ((lineInput[0]) == ':') // label found
 	{
+		if(lineInput[1] != 'L'){
+			throwError("ERROR! INVALID LABEL FORMAT!");
+		}
 		tempThingy.type = 2;
 		tempThingy.line = "";
 		PD *newPD = malloc(sizeof(PD));
@@ -507,14 +510,16 @@ int getExpectedArgCount(int formatType)
 // checks line against format, inputs whole line and strips instruction + tab
 void validateArgs(char *lineInput, int formatType)
 {
-	char *copy = malloc(sizeof(char) * (strlen(lineInput) + 1)); // so I dont brick the original
+	char *copy = malloc(sizeof(char) * (strlen(lineInput) + 1));
 	strcpy(copy, lineInput);
 
 	char *token = strtok(copy, delimiters);
 
 	int count = 0;
-	while ((token = strtok(NULL, delimiters)) != NULL)
+	char *args[5];
+	while ((token = strtok(NULL, delimiters)) != NULL && count < 5)
 	{
+		args[count] = token;
 		count++;
 	}
 
@@ -523,8 +528,54 @@ void validateArgs(char *lineInput, int formatType)
 	{
 		printf("original: %s, count is %i, expected is %i\n", lineInput, count, expected);
 		printf("format: %i, count is %i, expected is %i\n", formatType, count, getExpectedArgCount(formatType));
-
 		throwError("ERROR! INVALID SYNTAX FOR INSTRUCTION PASSED!");
+	}
+
+	if (formatType == FMT_RRR)
+	{
+		parseReg(args[0]);
+		parseReg(args[1]);
+		parseReg(args[2]);
+	}
+	else if (formatType == FMT_RR)
+	{
+		parseReg(args[0]);
+		parseReg(args[1]);
+	}
+	else if (formatType == FMT_RL)
+	{
+		parseReg(args[0]);
+	}
+	else if (formatType == FMT_R)
+	{
+		parseReg(args[0]);
+	}
+	else if (formatType == FMT_RRRL)
+	{
+		parseReg(args[0]);
+		parseReg(args[1]);
+		parseReg(args[2]);
+	}
+	else if (formatType == FMT_MOV)
+	{
+		if (args[0][0] == '(')
+		{
+			char *temp = args[0] + 1;
+			char *end = strchr(temp, ')'); //replace the ending paren with null to cut string
+			if (end) *end = '\0';
+			parseReg(temp);
+		}
+		else
+		{
+			parseReg(args[0]);
+		}
+	}
+	else if (formatType == FMT_R_OR_L)
+	{
+		if (args[0][0] == 'r' || args[0][0] == 'R')
+		{
+			parseReg(args[0]);
+		}
 	}
 
 	free(copy);
@@ -1188,11 +1239,17 @@ uint32_t convertMOV(uint8_t opcode, char *line)
 
 uint8_t parseReg(char *registry)
 {
-	if (registry[0] == 'r' || registry[0] == 'R')
+	if (registry[0] != 'r' && registry[0] != 'R')
 	{
-		return (uint8_t)strtoul(registry + 1, NULL, 0);
+
+		throwError("ERROR! Register must start with 'r'!");
 	}
-	throwError("ERROR! wut - this aint no registry!");
+	unsigned long regNum = strtoul(registry + 1, NULL, 0);
+	if (regNum > 31)
+	{
+		throwError("ERROR! Register number must be between 0 and 31!");
+	}
+	return (uint8_t)regNum;
 }
 
 uint64_t parse64BitNums(char *input)
