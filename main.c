@@ -7,19 +7,15 @@
 
 #define IS_CURRENTLY_TESTING 0
 
-// =============================================================================
-// INSTRUCTION FORMAT TYPES (for argument validation)
-// Encoding: opcode[31:27] | rd[26:22] | rs[21:17] | rt[16:12] | L[11:0]
-// =============================================================================
-#define FMT_RRR 0	 // rd, rs, rt        (3 registers)
-#define FMT_RR 1	 // rd, rs            (2 registers)
-#define FMT_RL 2	 // rd, L             (1 register + literal)
-#define FMT_R 3		 // rd                (1 register)
-#define FMT_L 4		 // L                 (1 literal, signed for brr)
-#define FMT_NONE 5	 // (no operands)
-#define FMT_RRRL 6	 // rd, rs, rt, L     (3 registers + literal)
-#define FMT_MOV 7	 // special: 2 args   (context-dependent mov)
-#define FMT_R_OR_L 8 // 1 arg: reg or lit (brr)
+#define FMT_RRR 0	 // rd, rs, rt
+#define FMT_RR 1	 // rd, rs
+#define FMT_RL 2	 // rd, L
+#define FMT_R 3		 // rd
+#define FMT_L 4		 // L
+#define FMT_NONE 5	 // no params
+#define FMT_RRRL 6	 // rd, rs, rt, L
+#define FMT_MOV 7	 // special: 2 args but depends on mov
+#define FMT_R_OR_L 8 // 1 arg: reg or lit for brr
 typedef struct testingReturnType
 {
 	char *line;
