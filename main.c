@@ -245,8 +245,8 @@ testingReturnType processLine(char *lineInput)
 				throwError("ERROR! Data value exceeds 64-bit range");
 			}
 
-			//pushOtherInIfExists(0); // push all the code in if needed before adding more data
-			
+			// pushOtherInIfExists(0); // push all the code in if needed before adding more data
+
 			char temp[64];
 			sprintf(temp, "\n\t%llu", value);
 			addString(&data, temp);
@@ -278,7 +278,7 @@ testingReturnType processLine(char *lineInput)
 	}
 	else if ((lineInput[0]) == '.')
 	{ // either .code or .data
-				int newType = -1;
+		int newType = -1;
 		if (strncmp(lineInput, ".data", 5) == 0)
 		{
 			newType = 0;
@@ -331,7 +331,6 @@ testingReturnType processLine(char *lineInput)
 		{
 			hasSeenAtLeast1Code = 1;
 		}
-
 	}
 	else if (lineInput[0] == '\n')
 	{
@@ -870,7 +869,10 @@ void processIntermediateIntoBinary(char *intermediateFilePath, char *outputBinar
 		while (fgets(line, BUFFER_SIZE, inputFile) != NULL)
 		{
 			uint32_t result = processIntermediateLine(line);
-			fprintf(outputFile, "%X", result);
+			if (result != 0)
+			{
+				fprintf(outputFile, "%X", result);
+			}
 		}
 	}
 	else
@@ -970,6 +972,8 @@ uint8_t getOpcode(char *line)
 		return 0x1c;
 	if (strcmp(token, "div") == 0)
 		return 0x1d;
+	if (strcmp(token, ".code") == 0 || strcmp(token, ".data") == 0)
+		return 0;
 	throwError("ERROR PARSING OPCODE!");
 }
 
@@ -1031,6 +1035,10 @@ uint32_t processIntermediateLine(char *line)
 	else if (opcode == 0x10 || opcode == 0x11 || opcode == 0x12 || opcode == 0x13)
 	{
 		return convertMOV(opcode, line);
+	}
+	else if (opcode == 0)
+	{ // means we hit a .data or .code
+		return 0;
 	}
 }
 
@@ -1173,7 +1181,7 @@ uint8_t parseReg(char *registry)
 
 uint64_t parse64BitNums(char *input)
 {
-	//Theoretically I don't need any of these except for the tab strip, but whatevs
+	// Theoretically I don't need any of these except for the tab strip, but whatevs
 	stripChars(input, ' ');
 	stripChars(input, ',');
 	stripChars(input, '\t');
@@ -1184,7 +1192,7 @@ uint64_t parse64BitNums(char *input)
 	char *end;
 	uint64_t value = strtoull(input, &end, 0);
 
-	//also theoretically don't need...
+	// also theoretically don't need...
 	if (end == input)
 	{
 		throwError("ERROR! Invalid 64-bit data value - not a number");
