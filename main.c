@@ -3,9 +3,23 @@
 #include <stdlib.h>
 #include "ArrayList.h"
 
-//Make sure registers start with R, labels start with L -- to pass invalid test cases -- spaces aren't allowed inside the label
+// Make sure registers start with R, labels start with L -- to pass invalid test cases -- spaces aren't allowed inside the label
 
 #define IS_CURRENTLY_TESTING 0
+
+// =============================================================================
+// INSTRUCTION FORMAT TYPES (for argument validation)
+// Encoding: opcode[31:27] | rd[26:22] | rs[21:17] | rt[16:12] | L[11:0]
+// =============================================================================
+#define FMT_RRR 0	 // rd, rs, rt        (3 registers)
+#define FMT_RR 1	 // rd, rs            (2 registers)
+#define FMT_RL 2	 // rd, L             (1 register + literal)
+#define FMT_R 3		 // rd                (1 register)
+#define FMT_L 4		 // L                 (1 literal, signed for brr)
+#define FMT_NONE 5	 // (no operands)
+#define FMT_RRRL 6	 // rd, rs, rt, L     (3 registers + literal)
+#define FMT_MOV 7	 // special: 2 args   (context-dependent mov)
+#define FMT_R_OR_L 8 // 1 arg: reg or lit (brr)
 typedef struct testingReturnType
 {
 	char *line;
@@ -20,8 +34,7 @@ void processInstructions(testingReturnType *input, char *lineInput);
 int startsWith(char *searchString, char *string);
 int startsWith2(char *inputString, char *searchStrings[], int numStrings);
 void stripChars(char *input, char charToStrip);
-int validateNumArgs(char *inputs, int numExpectedArgs);
-void handleValidateNumArgs(char *inputs, int numExpectedArgs);
+void validateArgs(char *lineInput, int formatType);
 void incrementBytes(int type);
 void runTests();
 
@@ -178,7 +191,7 @@ testingReturnType processLine(char *lineInput)
 			debuggingLineCount++;
 		}
 	}
-	else if ((lineInput[0]) == ':') // label
+	else if ((lineInput[0]) == ':') // label found
 	{
 		tempThingy.type = 2;
 		tempThingy.line = "";
@@ -275,216 +288,85 @@ void throwError(char *message)
 
 void processInstructions(testingReturnType *input, char *lineInput)
 {
-	char *threeByThrees[] = {"add", "sub", "mul", "div", "xor"};
-	char *fourByTwo[] = {"addi", "subi", "brnz"};
-
-		// --- TYPE_RRR: rd, rs, rt (3 registers) ---
-	char *type_rrr_4char[] = {"addf", "subf", "mulf", "divf", "brgt"};
-	char *type_rrr_3char[] = {"add", "sub", "mul", "div", "and", "xor"};
-	char *type_rrr_2char[] = {"or"};
-	char *type_rrr_5char[] = {"shftr", "shftl"}; // 5-char versions (not shftri/shftli)
-
-	// --- TYPE_RR: rd, rs (2 registers) ---
-	char *type_rr_4char[] = {"brnz"};
-	char *type_rr_3char[] = {"not"};
-
-	// --- TYPE_RL: rd, L (1 register + literal) ---
-	char *type_rl_6char[] = {"shftri", "shftli"};
-	char *type_rl_4char[] = {"addi", "subi"};
-
-	// --- TYPE_R: rd (1 register) ---
-	// Includes: br, call (ERRATA: call is "call rd", not "call rd, rs, rt")
-	char *type_r_4char[] = {"call"};
-	char *type_r_2char[] = {"br"};
-
-	// --- TYPE_R_OR_L: brr (can be register OR literal) ---
-	char *type_r_or_l[] = {"brr"};
-
-	// --- TYPE_NONE: no operands ---
-	char *type_none[] = {"return"};
-
-	// --- TYPE_RRRL: rd, rs, rt, L (3 registers + literal) ---
-	char *type_rrrl[] = {"priv"};
-
-	if (startsWith2(lineInput, threeByThrees, 5))
+	if (startsWith("shftri", lineInput) || startsWith("shftli", lineInput) || startsWith("addi", lineInput) || startsWith("subi", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
+		validateArgs(lineInput, FMT_RL);
 		autoAdd(lineInput);
 	}
-	else if (startsWith2(lineInput, fourByTwo, 3))
+	else if (startsWith("brnz", lineInput) || startsWith("not", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 2);
+		validateArgs(lineInput, FMT_RR);
 		autoAdd(lineInput);
-
-		// rd <- rd + L
-	}
-	else if (startsWith("call", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 4 + 1, 1);
-		// pc <- rd, saves return addr
-		autoAdd(lineInput);
-	}
-
-	else if (startsWith("or", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 2 + 1, 3);
-		// rd <- rs | rt
-		autoAdd(lineInput);
-	}
-	else if (startsWith("shftli", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 6 + 1, 2);
-		autoAdd(lineInput);
-		// rd <- rd << L
-	}
-	else if (startsWith("shftl", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 5 + 1, 3);
-		autoAdd(lineInput);
-		// rd <- rs << rt
-	}
-	else if (startsWith("shftri", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 6 + 1, 2);
-		autoAdd(lineInput);
-		// rd <- rd >> L
-	}
-	else if (startsWith("shftr", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 5 + 1, 3);
-		autoAdd(lineInput);
-		// rd <- rs >> rt
-	}
-	else if (startsWith("mov", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 3 + 1, 2);
-		autoAdd(lineInput);
-		// Could be:
-		// 1. mov rd, rs (Reg-to-Reg)
-		// 2. mov rd, (rs)(L) (Load from memory)
-		// 3. mov (rd)(L), rs (Store to memory)
 	}
 	else if (startsWith("brr", lineInput))
 	{
-
-		handleValidateNumArgs(lineInput + 3 + 1, 1);
-		autoAdd(lineInput);
-		// NOTE: can be brr r_d OR brr L
-		//  Branch Relative: PC <- PC + L
-	}
-	else if (startsWith("brgt", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
-		autoAdd(lineInput);
-		// pc <- rd if rs > rt
-	}
-	else if (startsWith("br", lineInput))
-	{
-
-		handleValidateNumArgs(lineInput + 2 + 1, 1);
-		autoAdd(lineInput);
-		// pc <- rd
-	}
-	else if (startsWith("return", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 6 + 1, 0);
-
-		autoAdd(lineInput);
-
-		// No args
-	}
-	else if (startsWith("addf", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
+		validateArgs(lineInput, FMT_R_OR_L);
 		autoAdd(lineInput);
 	}
-	else if (startsWith("subf", lineInput))
+	else if (startsWith("call", lineInput) || startsWith("br", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
+		validateArgs(lineInput, FMT_R);
 		autoAdd(lineInput);
-	}
-	else if (startsWith("mulf", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
-		autoAdd(lineInput);
-	}
-	else if (startsWith("divf", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 4 + 1, 3);
-		autoAdd(lineInput);
-	}
-	else if (startsWith("and", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 3 + 1, 3);
-		autoAdd(lineInput);
-		// rd <- rs & rt
-	}
-	else if (startsWith("not", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 3 + 1, 2);
-		autoAdd(lineInput);
-		// rd <- ~rs
 	}
 	else if (startsWith("priv", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 4);
+		validateArgs(lineInput, FMT_RRRL);
 		autoAdd(lineInput);
-		// priv rd, rs, rt, L
 	}
-	// === MACROS (to be expanded later) ===
-	else if (startsWith("clr", lineInput))
+	else if (startsWith("add", lineInput) || startsWith("sub", lineInput) ||
+			 startsWith("mul", lineInput) || startsWith("div", lineInput) ||
+			 startsWith("and", lineInput) || startsWith("xor", lineInput) || startsWith("or", lineInput) || startsWith("addf", lineInput) || startsWith("subf", lineInput) ||
+			 startsWith("mulf", lineInput) || startsWith("divf", lineInput) ||
+			 startsWith("brgt", lineInput) || startsWith("shftr", lineInput) || startsWith("shftl", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 3 + 1, 1);
-		autoAddMacro(convertClrMacro(lineInput));
-		// Macro: expands to xor rd, rd, rd
+		validateArgs(lineInput, FMT_RRR);
+		autoAdd(lineInput);
 	}
-	else if (startsWith("ld", lineInput))
+	else if (startsWith("mov", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 2 + 1, 2);
-		autoAddMacro(convertLdMacro(lineInput));
-
-		// Macro: expands to xor + addi/shftli chain
+		validateArgs(lineInput, FMT_MOV);
+		autoAdd(lineInput);
 	}
+	else if (startsWith("return", lineInput))
+	{
+		validateArgs(lineInput, FMT_NONE);
+		autoAdd(lineInput);
+	}
+	// macro expansion stuff
 	else if (startsWith("halt", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 0);
+		validateArgs(lineInput, FMT_NONE);
 		autoAddMacro(convertHaltMacro(lineInput));
-
-		// Macro: no args, expands to priv r0, r0, r0, 0x0
-	}
-	else if (startsWith("in", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 2 + 1, 2);
-		autoAddMacro(convertInMacro(lineInput));
-
-		// Macro: expands to priv rd, rs, r0, 0x3
-	}
-	else if (startsWith("out", lineInput))
-	{
-		handleValidateNumArgs(lineInput + 3 + 1, 2);
-		autoAddMacro(convertOutMacro(lineInput));
-
-		// Macro: expands to priv rd, rs, r0, 0x4
 	}
 	else if (startsWith("push", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 4 + 1, 1);
+		validateArgs(lineInput, FMT_R);
 		autoAddMacro(convertPushMacro(lineInput));
-
-		// Macro: push rd onto stack
 	}
 	else if (startsWith("pop", lineInput))
 	{
-		handleValidateNumArgs(lineInput + 3 + 1, 1);
+		validateArgs(lineInput, FMT_R);
 		autoAddMacro(convertPopMacro(lineInput));
-
-		// Macro: pop into rd from stack
+	}
+	else if (startsWith("clr", lineInput))
+	{
+		validateArgs(lineInput, FMT_R);
+		autoAddMacro(convertClrMacro(lineInput));
+	}
+	else if (startsWith("out", lineInput))
+	{
+		validateArgs(lineInput, FMT_RR);
+		autoAddMacro(convertOutMacro(lineInput));
+	}
+	else if (startsWith("ld", lineInput))
+	{
+		validateArgs(lineInput, FMT_RL);
+		autoAddMacro(convertLdMacro(lineInput));
+	}
+	else if (startsWith("in", lineInput))
+	{
+		validateArgs(lineInput, FMT_RR);
+		autoAddMacro(convertInMacro(lineInput));
 	}
 	else
 	{
@@ -517,37 +399,56 @@ void stripChars(char *input, char charToStrip)
 	input[counterIndex] = '\0';
 }
 
-// exists for testing purposes
-int validateNumArgs(char *inputs, int numExpectedArgs)
+// Returns expected arg count for a format type
+int getExpectedArgCount(int formatType)
 {
-	char *copy = malloc(sizeof(char) * (strlen(inputs) + 1));
-	strcpy(copy, inputs);
+	switch (formatType)
+	{
+	case FMT_RRR:
+		return 3; // rd, rs, rt
+	case FMT_RR:
+		return 2; // rd, rs
+	case FMT_RL:
+		return 2; // rd, L
+	case FMT_R:
+		return 1; // rd
+	case FMT_L:
+		return 1; // L
+	case FMT_NONE:
+		return 0; // (none)
+	case FMT_RRRL:
+		return 4; // rd, rs, rt, L
+	case FMT_MOV:
+		return 2; // 2 args (various formats)
+	case FMT_R_OR_L:
+		return 1; // 1 arg (register or literal)
+	default:
+		return -1;
+	}
+}
+
+// checks line against format, inputs whole line and strips instruction + tab
+void validateArgs(char *lineInput, int formatType)
+{
+	char *copy = malloc(sizeof(char) * (strlen(lineInput) + 1)); // so I dont brick the original
+	strcpy(copy, lineInput);
 
 	char *token = strtok(copy, delimiters);
 
 	int count = 0;
-	while (1)
+	while ((token = strtok(NULL, delimiters)) != NULL)
 	{
-		if (token != NULL)
-		{
-			count++;
-		}
-		else
-		{
-			break;
-		}
-		token = strtok(NULL, delimiters);
+		count++;
 	}
-	return count == numExpectedArgs;
-}
 
-// checks that num args is what is expcected -- but the extra +1 usually added is to handle that pesky tab char
-void handleValidateNumArgs(char *inputs, int numExpectedArgs)
-{
-	if (validateNumArgs(inputs, numExpectedArgs) == 0)
+	int expected = getExpectedArgCount(formatType);
+	if (count != expected)
 	{
+		free(copy);
 		throwError("ERROR! INVALID SYNTAX FOR INSTRUCTION PASSED!");
 	}
+
+	free(copy);
 	incrementBytes(type);
 	debuggingLineCount++;
 }
