@@ -1,0 +1,6 @@
+.code
+	call rd
+.data
+	add rd, rs, rt
+	br 3
+	shftr rd, rs, rd
