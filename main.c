@@ -3,6 +3,41 @@
 #include <stdlib.h>
 #include "ArrayList.h"
 
+// yeah yeah ik I should put this in a seperate file, but I'll do that later if I have time
+typedef struct StringBuilder
+{
+	char *data;
+	int size;
+	int capacity;
+} StringBuilder;
+
+void newStringBuilder(StringBuilder *sb)
+{
+	sb->capacity = 5000;
+	sb->size = 0;
+	sb->data = malloc(sb->capacity);
+	sb->data[0] = '\0';
+}
+
+void addString(StringBuilder *sb, const char *str)
+{
+	int addsize = strlen(str);
+	if (sb->size + addsize + 1 > sb->capacity)
+	{
+		while (sb->size + addsize + 1 > sb->capacity)
+			sb->capacity *= 2;
+		sb->data = realloc(sb->data, sb->capacity);
+	}
+	strcpy(sb->data + sb->size, str);
+	sb->size += addsize;
+}
+
+void sbClear(StringBuilder *sb)
+{
+	sb->size = 0;
+	sb->data[0] = '\0';
+}
+
 // Make sure registers start with R, labels start with L -- to pass invalid test cases -- spaces aren't allowed inside the label
 
 #define IS_CURRENTLY_TESTING 0
@@ -47,12 +82,9 @@ void autoAddMacro(char *inputString);
 
 PDArrayList listOfLabels;
 const char delimiters[] = ", \t\n\r";
-
-// initialize some "string builders" and hope 5k chars is enough
-char code[5000] = {0};
-char data[5000] = {0};
-
-char codeAndDataCombined[10000] = {0}; // used for final output
+StringBuilder code;
+StringBuilder data;
+StringBuilder codeAndDataCombined;
 
 // 0 for data mode, 1 for int, -1 for unset
 int type = -1;
@@ -71,22 +103,24 @@ int isFirstLineInOutput = 1;
 
 int main(int argc, char *argv[])
 {
-
 	char *inputFilePath = argv[1];
 	char *intermediateOutputFilePath = argv[2];
 	char *binaryOutputFilePath = argv[3];
 	newPDArrayList(&listOfLabels);
+	newStringBuilder(&code);
+	newStringBuilder(&data);
+	newStringBuilder(&codeAndDataCombined);
 
 	if (!IS_CURRENTLY_TESTING)
 	{
 		processInputFile(inputFilePath);
-		printf("%s", codeAndDataCombined);
+		printf("%s", codeAndDataCombined.data);
 		FILE *fptr;
 		fptr = fopen(intermediateOutputFilePath, "w");
-		fprintf(fptr, "%s", codeAndDataCombined);
+		fprintf(fptr, "%s", codeAndDataCombined.data);
 		fclose(fptr);
 
-		printf("%s", codeAndDataCombined);
+		printf("%s", codeAndDataCombined.data);
 	}
 	else
 	{
@@ -111,9 +145,9 @@ void processInputFile(char *inputFilePath)
 		}
 
 		numRuns++;
-		code[0] = '\0';
-		data[0] = '\0';
-		codeAndDataCombined[0] = '\0';
+		sbClear(&code);
+		sbClear(&data);
+		sbClear(&codeAndDataCombined);
 		isFirstLineInOutput = 1;
 		rewind(file);
 		type = -1;
@@ -126,32 +160,34 @@ void processInputFile(char *inputFilePath)
 		}
 
 		// put the last bit in
-		if (type == 1 && code[0] != '\0')
+		if (type == 1 && code.size > 0)
 		{
 			if (isFirstLineInOutput)
 			{
-				strcat(codeAndDataCombined, ".code");
+				addString(&codeAndDataCombined, ".code");
 				isFirstLineInOutput = 0;
 			}
 			else
 			{
-				strcat(codeAndDataCombined, "\n.code");
+				addString(&codeAndDataCombined, "\n.code");
 			}
-			strcat(codeAndDataCombined, code);
+			addString(&codeAndDataCombined, code.data);
 		}
-		else if (type == 0 && data[0] != '\0')
+		else if (type == 0 && data.size > 0)
 		{
 			if (isFirstLineInOutput)
 			{
-				strcat(codeAndDataCombined, ".data");
+				addString(&codeAndDataCombined, ".data");
 				isFirstLineInOutput = 0;
 			}
 			else
 			{
-				strcat(codeAndDataCombined, "\n.data");
+				addString(&codeAndDataCombined, "\n.data");
 			}
-			strcat(codeAndDataCombined, data);
+			addString(&codeAndDataCombined, data.data);
 		}
+
+		printf("final output: %s", codeAndDataCombined.data);
 	}
 	else
 	{
@@ -181,7 +217,9 @@ testingReturnType processLine(char *lineInput)
 
 			long long value = strtoll(valuePart, NULL, 0);
 
-			sprintf(data + strlen(data), "\n\t%lld", value);
+			char temp[64];
+			sprintf(temp, "\n\t%lld", value);
+			addString(&data, temp);
 
 			incrementBytes(type); // add 8 bytes for data
 			debuggingLineCount++;
@@ -231,29 +269,29 @@ testingReturnType processLine(char *lineInput)
 			{
 				if (isFirstLineInOutput)
 				{
-					strcat(codeAndDataCombined, ".code");
+					addString(&codeAndDataCombined, ".code");
 					isFirstLineInOutput = 0;
 				}
 				else
 				{
-					strcat(codeAndDataCombined, "\n.code");
+					addString(&codeAndDataCombined, "\n.code");
 				}
-				strcat(codeAndDataCombined, code);
-				code[0] = '\0';
+				addString(&codeAndDataCombined, code.data);
+				sbClear(&code);
 			}
 			else if (type == 0)
 			{
 				if (isFirstLineInOutput)
 				{
-					strcat(codeAndDataCombined, ".data");
+					addString(&codeAndDataCombined, ".data");
 					isFirstLineInOutput = 0;
 				}
 				else
 				{
-					strcat(codeAndDataCombined, "\n.data");
+					addString(&codeAndDataCombined, "\n.data");
 				}
-				strcat(codeAndDataCombined, data);
-				data[0] = '\0';
+				addString(&codeAndDataCombined, data.data);
+				sbClear(&data);
 			}
 		}
 
@@ -299,11 +337,6 @@ void processInstructions(testingReturnType *input, char *lineInput)
 		validateArgs(lineInput, FMT_R_OR_L);
 		autoAdd(lineInput);
 	}
-	else if (startsWith("call", lineInput) || startsWith("br", lineInput))
-	{
-		validateArgs(lineInput, FMT_R);
-		autoAdd(lineInput);
-	}
 	else if (startsWith("priv", lineInput))
 	{
 		validateArgs(lineInput, FMT_RRRL);
@@ -318,6 +351,12 @@ void processInstructions(testingReturnType *input, char *lineInput)
 		validateArgs(lineInput, FMT_RRR);
 		autoAdd(lineInput);
 	}
+		else if (startsWith("call", lineInput) || startsWith("br", lineInput))
+	{
+		validateArgs(lineInput, FMT_R);
+		autoAdd(lineInput);
+	}
+
 	else if (startsWith("mov", lineInput))
 	{
 		validateArgs(lineInput, FMT_MOV);
@@ -366,6 +405,7 @@ void processInstructions(testingReturnType *input, char *lineInput)
 	}
 	else
 	{
+		printf("%s", lineInput);
 		throwError("ERROR! INVALID INSTRUCTION!");
 	}
 }
@@ -378,6 +418,17 @@ void storePDs()
 // Return 1 if true, 0 if false, NOTE: I added an extra +1 since I'm accounting for tab indentation starts
 int startsWith(char *searchString, char *string)
 {
+	// ERMmmmm -- this is kinda sketchy bc it could trigger weird stuff if you get add i0 --> addi0 which passes but is wrong...
+	if (strncmp(searchString, string + 1, strlen(searchString)))
+	{
+		// failed basic check
+		char *copy = malloc(sizeof(char) * (strlen(string) + 1)); // so I dont brick the original
+		strcpy(copy, string);
+
+		stripChars(copy, ' ');
+		stripChars(copy, '\t');
+		return !strncmp(searchString, copy, strlen(searchString));
+	}
 	return !strncmp(searchString, string + 1, strlen(searchString));
 }
 
@@ -440,7 +491,9 @@ void validateArgs(char *lineInput, int formatType)
 	int expected = getExpectedArgCount(formatType);
 	if (count != expected)
 	{
-		free(copy);
+		printf("original: %s, count is %i, expected is %i\n", lineInput, count, expected);
+		printf("format: %i, count is %i, expected is %i\n", formatType, count, getExpectedArgCount(formatType));
+
 		throwError("ERROR! INVALID SYNTAX FOR INSTRUCTION PASSED!");
 	}
 
@@ -505,10 +558,12 @@ char *convertHaltMacro(char *input)
 // clr rd
 char *convertClrMacro(char *input)
 {
-	char *buffer = malloc(sizeof(char) * 30); // more than enough space
+	char *buffer = malloc(sizeof(char) * 30);
 	buffer[0] = '\0';
-	input += 4; // to get rid of the tab + clr
-	char *token = strtok(input, delimiters);
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 4;
+	char *token = strtok(copy, delimiters);
 	sprintf(buffer, "\n\txor %s, %s, %s", token, token, token);
 	return buffer;
 }
@@ -516,14 +571,15 @@ char *convertClrMacro(char *input)
 // ld rd, L
 char *convertLdMacro(char *input)
 {
-	// int isZeros = 1; //means we're just starting off, leading bits are zero so can be discarded
 	char *buffer = malloc(sizeof(char) * 500);
 	buffer[0] = '\0';
-	input += 3; // to get rid of the tab + ld
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 3;
 	long long value = 0;
 
-	char *token = strtok(input, delimiters); // the register
-	char *token2 = strtok(NULL, delimiters); // the data -- either a label or a literal
+	char *token = strtok(copy, delimiters);
+	char *token2 = strtok(NULL, delimiters);
 
 	if (token2[0] == ':')
 	{
@@ -538,7 +594,7 @@ char *convertLdMacro(char *input)
 	}
 	else
 	{
-		value = strtoll(token2, NULL, 10);
+		value = strtoll(token2, NULL, 0);
 	}
 
 	sprintf(buffer, "\n\txor %s, %s, %s", token, token, token);
@@ -574,12 +630,14 @@ char *convertLdMacro(char *input)
 // in rd, rs
 char *convertInMacro(char *input)
 {
-	input += 3;								  // to get rid of the tab + in
-	char *buffer = malloc(sizeof(char) * 40); // more than enough space
+	char *buffer = malloc(sizeof(char) * 40);
 	buffer[0] = '\0';
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 3;
 
-	char *token = strtok(input, delimiters); // rd
-	char *token2 = strtok(NULL, delimiters); // rs
+	char *token = strtok(copy, delimiters);
+	char *token2 = strtok(NULL, delimiters);
 
 	sprintf(buffer, "\n\tpriv %s, %s, r0, %i", token, token2, 0x3);
 	return buffer;
@@ -588,12 +646,14 @@ char *convertInMacro(char *input)
 // out rd, rs
 char *convertOutMacro(char *input)
 {
-	input += 4;								  // to get rid of the tab + out
-	char *buffer = malloc(sizeof(char) * 40); // more than enough space
+	char *buffer = malloc(sizeof(char) * 40);
 	buffer[0] = '\0';
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 4;
 
-	char *token = strtok(input, delimiters); // rd
-	char *token2 = strtok(NULL, delimiters); // rs
+	char *token = strtok(copy, delimiters);
+	char *token2 = strtok(NULL, delimiters);
 
 	sprintf(buffer, "\n\tpriv %s, %s, r0, %i", token, token2, 0x4);
 	return buffer;
@@ -602,10 +662,12 @@ char *convertOutMacro(char *input)
 // push rd
 char *convertPushMacro(char *input)
 {
-	input += 5;								  // to get rid of the tab + push
-	char *buffer = malloc(sizeof(char) * 45); // more than enough space
+	char *buffer = malloc(sizeof(char) * 45);
 	buffer[0] = '\0';
-	char *token = strtok(input, delimiters); // rd
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 5;
+	char *token = strtok(copy, delimiters);
 
 	sprintf(buffer + strlen(buffer), "\n\tmov (r31)(-8), %s", token);
 	sprintf(buffer + strlen(buffer), "\n\tsubi r31, 8");
@@ -630,10 +692,12 @@ char *convertPushMacro(char *input)
 // pop rd
 char *convertPopMacro(char *input)
 {
-	input += 4;								  // to get rid of the tab + pop
-	char *buffer = malloc(sizeof(char) * 45); // more than enough space
+	char *buffer = malloc(sizeof(char) * 45);
 	buffer[0] = '\0';
-	char *token = strtok(input, delimiters); // rd
+	char *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strcpy(copy, input);
+	copy += 4;
+	char *token = strtok(copy, delimiters);
 
 	sprintf(buffer + strlen(buffer), "\n\tmov %s, (r31)(0)", token);
 	sprintf(buffer + strlen(buffer), "\n\taddi r31, 8");
@@ -657,10 +721,12 @@ char *convertPopMacro(char *input)
 
 char *parseAndFormatArgs(char *inputString)
 {
-	char *outputLine = malloc(sizeof(char) * 50); // once again, plenty of space
+	char *outputLine = malloc(sizeof(char) * 256);
 	outputLine[0] = '\0';
 	char delims[] = " ,\t\n\r";
-	char *token = strtok(inputString, delims);
+	char *copy = malloc(sizeof(char) * (strlen(inputString) + 1));
+	strcpy(copy, inputString);
+	char *token = strtok(copy, delims);
 	sprintf(outputLine + strlen(outputLine), "\n\t%s", token); // should be the first one -- the instruction
 	token = strtok(NULL, delims);
 	int isFirst = 1;
@@ -693,11 +759,11 @@ void autoAdd(char *inputString)
 	// 0 for data mode, 1 for int, -1 for unset
 	if (type == 0)
 	{
-		strcat(data, parseAndFormatArgs(inputString));
+		addString(&data, parseAndFormatArgs(inputString));
 	}
 	else if (type == 1)
 	{
-		strcat(code, parseAndFormatArgs(inputString));
+		addString(&code, parseAndFormatArgs(inputString));
 	}
 	else
 	{
@@ -709,11 +775,11 @@ void autoAddMacro(char *inputString)
 {
 	if (type == 0)
 	{
-		strcat(data, inputString);
+		addString(&data, inputString);
 	}
 	else if (type == 1)
 	{
-		strcat(code, inputString);
+		addString(&code, inputString);
 	}
 	else
 	{
