@@ -138,9 +138,7 @@ testingReturnType processLine(char *lineInput)
 
 			long long value = strtoll(valuePart, NULL, 0);
 
-			char dataLine[50];
-			sprintf(dataLine, "\n\t%lld", value);
-			sprintf(data + strlen(data), "%s", dataLine);
+			sprintf(data + strlen(data), "\n\t%lld", value);
 
 			incrementBytes(type); // add 8 bytes for data
 			debuggingLineCount++;
@@ -175,28 +173,28 @@ testingReturnType processLine(char *lineInput)
 			{
 				if (isFirstLineInOutput)
 				{
-					sprintf(codeAndDataCombined + strlen(codeAndDataCombined), ".code");
+					strcat(codeAndDataCombined, ".code");
 					isFirstLineInOutput = 0;
 				}
 				else
 				{
-					sprintf(codeAndDataCombined + strlen(codeAndDataCombined), "\n.code");
+					strcat(codeAndDataCombined, "\n.code");
 				}
-				sprintf(codeAndDataCombined + strlen(codeAndDataCombined), code);
+				strcat(codeAndDataCombined, code);
 				code[0] = '\0';
 			}
 			else if (type == 0)
 			{
 				if (isFirstLineInOutput)
 				{
-					sprintf(codeAndDataCombined + strlen(codeAndDataCombined), ".data");
+					strcat(codeAndDataCombined, ".data");
 					isFirstLineInOutput = 0;
 				}
 				else
 				{
-					sprintf(codeAndDataCombined + strlen(codeAndDataCombined), "\n.data");
+					strcat(codeAndDataCombined, "\n.data");
 				}
-				sprintf(codeAndDataCombined + strlen(codeAndDataCombined), data);
+				strcat(codeAndDataCombined, data);
 				data[0] = '\0';
 			}
 		}
@@ -729,11 +727,11 @@ void autoAdd(char *inputString)
 	// 0 for data mode, 1 for int, -1 for unset
 	if (type == 0)
 	{
-		sprintf(data + strlen(data), parseAndFormatArgs(inputString));
+		strcat(data, parseAndFormatArgs(inputString));
 	}
 	else if (type == 1)
 	{
-		sprintf(code + strlen(code), parseAndFormatArgs(inputString));
+		strcat(code, parseAndFormatArgs(inputString));
 	}
 	else
 	{
@@ -745,11 +743,11 @@ void autoAddMacro(char *inputString)
 {
 	if (type == 0)
 	{
-		sprintf(data + strlen(data), inputString);
+		strcat(data, inputString);
 	}
 	else if (type == 1)
 	{
-		sprintf(code + strlen(code), inputString);
+		strcat(code, inputString);
 	}
 	else
 	{
