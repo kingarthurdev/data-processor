@@ -246,52 +246,7 @@ testingReturnType processLine(char *lineInput)
 			}
 
 			//pushOtherInIfExists(0); // push all the code in if needed before adding more data
-			else if ((lineInput[0]) == '.')
-{ // either .code or .data
-	int newType = -1;
-	if (strncmp(lineInput, ".data", 5) == 0)
-	{
-		newType = 0;
-		pushOtherInIfExists(0); // flush any pending code first
-		if (isFirstLineInOutput)
-		{
-			addString(&codeAndDataCombined, ".data");
-			isFirstLineInOutput = 0;
-		}
-		else
-		{
-			addString(&codeAndDataCombined, "\n.data");
-		}
-		sbClear(&data);
-	}
-	else if (strncmp(lineInput, ".code", 5) == 0)
-	{
-		newType = 1;
-		pushOtherInIfExists(1); // flush any pending data first
-		if (isFirstLineInOutput)
-		{
-			addString(&codeAndDataCombined, ".code");
-			isFirstLineInOutput = 0;
-		}
-		else
-		{
-			addString(&codeAndDataCombined, "\n.code");
-		}
-		sbClear(&code);
-	}
-	else
-	{
-		throwError("ERROR! INVALID LINE STARTING WITH DOT!");
-	}
-
-	tempThingy.type = newType;
-	type = newType;
-	if (newType == 1)
-	{
-		hasSeenAtLeast1Code = 1;
-	}
-}
-
+			
 			char temp[64];
 			sprintf(temp, "\n\t%llu", value);
 			addString(&data, temp);
@@ -323,7 +278,7 @@ testingReturnType processLine(char *lineInput)
 	}
 	else if ((lineInput[0]) == '.')
 	{ // either .code or .data
-		int newType = -1;
+				int newType = -1;
 		if (strncmp(lineInput, ".data", 5) == 0)
 		{
 			newType = 0;
@@ -337,13 +292,46 @@ testingReturnType processLine(char *lineInput)
 			throwError("ERROR! INVALID LINE STARTING WITH DOT!");
 		}
 
-		// just update the type since adding is done when hits new type
+		// add new stuff only if new type so subsequent stuff gets combined
+		if (type != -1 && type != newType)
+		{
+			if (type == 1)
+			{
+				if (isFirstLineInOutput)
+				{
+					addString(&codeAndDataCombined, ".code");
+					isFirstLineInOutput = 0;
+				}
+				else
+				{
+					addString(&codeAndDataCombined, "\n.code");
+				}
+				addString(&codeAndDataCombined, code.data);
+				sbClear(&code);
+			}
+			else if (type == 0)
+			{
+				if (isFirstLineInOutput)
+				{
+					addString(&codeAndDataCombined, ".data");
+					isFirstLineInOutput = 0;
+				}
+				else
+				{
+					addString(&codeAndDataCombined, "\n.data");
+				}
+				addString(&codeAndDataCombined, data.data);
+				sbClear(&data);
+			}
+		}
+
 		tempThingy.type = newType;
 		type = newType;
 		if (newType == 1)
 		{
 			hasSeenAtLeast1Code = 1;
 		}
+
 	}
 	else if (lineInput[0] == '\n')
 	{
