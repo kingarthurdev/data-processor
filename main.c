@@ -627,18 +627,19 @@ char *convertLdMacro(char *input)
 		value = strtoll(token2, NULL, 0);
 	}
 
+	//ze brick lol
 	sprintf(buffer, "\n\txor %s, %s, %s", token, token, token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 60) & 0xF);
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 52) & 0xFFF);
 	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 12", token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 48) & 0xFFF);
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 40) & 0xFFF);
 	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 12", token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 36) & 0xFFF);
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 28) & 0xFFF);
 	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 12", token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 24) & 0xFFF);
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 16) & 0xFFF);
 	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 12", token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 12) & 0xFFF);
-	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 12", token);
-	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value & 0xFFF));
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, (value >> 4) & 0xFFF);
+	sprintf(buffer + strlen(buffer), "\n\tshftli %s, 4", token);
+	sprintf(buffer + strlen(buffer), "\n\taddi %s, %lld", token, value & 0xF);
 
 	// one less than actual (11 instead of 12) since the data validation will add one //TODO: fix if we update the structure
 	if (type == 0)
@@ -865,15 +866,32 @@ void processIntermediateIntoBinary(char *intermediateFilePath, char *outputBinar
 	if ((inputFile = fopen(intermediateFilePath, "r")) != NULL)
 	{
 		char line[1024];
-		int BUFFER_SIZE = 1024; // Accepting 1024 chars in case they feed in a decently long line
+		int BUFFER_SIZE = 1024;
 		while (fgets(line, BUFFER_SIZE, inputFile) != NULL)
 		{
-			uint32_t result = processIntermediateLine(line);
-			if (result != 0)
+			if (strncmp(line, ".code", 5) == 0)
 			{
-				fprintf(outputFile, "%X", result);
+				currentType = 1;
+				continue;
+			}
+			else if (strncmp(line, ".data", 5) == 0)
+			{
+				currentType = 0;
+				continue;
+			}
+
+			if (currentType == 0)
+			{
+				uint64_t dataVal = parse64BitNums(line);
+				fwrite(&dataVal, sizeof(uint64_t), 1, outputFile);
+			}
+			else if (currentType == 1)
+			{
+				uint32_t result = processIntermediateLine(line);
+				fwrite(&result, sizeof(uint32_t), 1, outputFile);
 			}
 		}
+		fclose(inputFile);
 	}
 	else
 	{
@@ -984,11 +1002,13 @@ uint32_t processOpcodeIntoFinalForm(uint8_t opcode, char *line)
 
 uint32_t processIntermediateLine(char *line)
 {
-	uint8_t opcode = getOpcode(line);		// uhh, 8 is the smallest one I think, but technically only needs 4 bits
-	char *token = strtok(line, delimiters); // should be instruction
+	char *lineCopy = malloc(strlen(line) + 1);
+	strcpy(lineCopy, line);
+	uint8_t opcode = getOpcode(line);
+	char *token = strtok(lineCopy, delimiters);
 
 	if (opcode == 0x0 || opcode == 0x1 || opcode == 0x2 || opcode == 0x4 ||
-		opcode == 0x6 || opcode == 0xc || opcode == 0xe || opcode == 0x14 ||
+		opcode == 0x6 || opcode == 0xe || opcode == 0x14 ||
 		opcode == 0x15 || opcode == 0x16 || opcode == 0x17 || opcode == 0x18 ||
 		opcode == 0x1a || opcode == 0x1c || opcode == 0x1d)
 	{
@@ -1009,7 +1029,7 @@ uint32_t processIntermediateLine(char *line)
 		uint8_t rs = parseReg(strtok(NULL, delimiters));
 		return convertRR(opcode, rd, rs);
 	}
-	else if (opcode == 0x8 || opcode == 0x9)
+	else if (opcode == 0x8 || opcode == 0x9 || opcode == 0xc)
 	{
 		uint8_t rd = parseReg(strtok(NULL, delimiters));
 		return convertR(opcode, rd);
@@ -1035,10 +1055,6 @@ uint32_t processIntermediateLine(char *line)
 	else if (opcode == 0x10 || opcode == 0x11 || opcode == 0x12 || opcode == 0x13)
 	{
 		return convertMOV(opcode, line);
-	}
-	else if (opcode == 0)
-	{ // means we hit a .data or .code
-		return 0;
 	}
 }
 
