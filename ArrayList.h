@@ -7,7 +7,7 @@
 //pd stands for preprocessorDirective
 typedef struct PD {
     char *thingToReplace;
-    char *replacementString;
+    long long replacementInt;
 } PD;
 
 typedef struct PDArrayList {

@@ -389,13 +389,13 @@ void incrementBytes(int type)
 	}
 }
 
-char *evaluateLabel(char *label)
+long long evaluateLabel(char *label)
 {
 	for (int i = 0; i < listOfLabels.size; i++)
 	{
 		if (strcmp(label, listOfLabels.data[i]->thingToReplace) == 0)
 		{
-			return listOfLabels.data[i]->replacementString;
+			return listOfLabels.data[i]-> replacementInt;
 		}
 	}
 	throwError("ERROR! LABEL NOT RECOGNIZED!");
@@ -430,29 +430,41 @@ char *convertLdMacro(char *input)
 	// int isZeros = 1; //means we're just starting off, leading bits are zero so can be discarded
 	char *buffer = malloc(sizeof(char)*50); // more than enough space
 	input += 3;				// to get rid of the tab + clr
-	char *token = strtok(input, delimiters); // the register
-	char *token2 = strtok(NULL, delimiters); // the register
+	long long value = 0;
 
+	char *token = strtok(input, delimiters); // the register
+	char *token2 = strtok(NULL, delimiters); // the data -- either a label or a literal\
+
+	if(token2[0] == ':'){
+		if(numRuns == 0){ //first pass, so inconsequential
+			value = 0;
+		}else{
+			value = evaluateLabel(token2);
+		}
+	}else{
+		value = strtoll(token2, NULL, 10);
+	}
 
 	sprintf(buffer, "\n\txor %s, %s, %s", token, token, token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes >> 60) & 0xF);
+	sprintf(buffer, "\n\taddi %s, %li", token, (value >> 60) & 0xF);
 	sprintf(buffer, "\n\tshftli %s, 12", token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes >> 48) & 0xFFF);
+	sprintf(buffer, "\n\taddi %s, %li", token, (value >> 48) & 0xFFF);
 	sprintf(buffer, "\n\tshftli %s, 12", token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes >> 36) & 0xFFF);
+	sprintf(buffer, "\n\taddi %s, %li", token, (value >> 36) & 0xFFF);
 	sprintf(buffer, "\n\tshftli %s, 12", token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes >> 24) & 0xFFF);
+	sprintf(buffer, "\n\taddi %s, %li", token, (value >> 24) & 0xFFF);
 	sprintf(buffer, "\n\tshftli %s, 12", token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes >> 12) & 0xFFF);
+	sprintf(buffer, "\n\taddi %s, %li", token, (value >> 12) & 0xFFF);
 	sprintf(buffer, "\n\tshftli %s, 12", token);
 
-	sprintf(buffer, "\n\taddi %s, %li", token, (memNumBytes & 0xFFF));
+	sprintf(buffer, "\n\taddi %s, %li", token, (value & 0xFFF));
 
+	memNumBytes += 11; //one less than actual since the data validation will add one //TODO: fix if we update the structure
 
 
 	// so shift over by 60 --> mask with 0xF
@@ -462,7 +474,7 @@ char *convertLdMacro(char *input)
 	// TODO: parse rd and L from input
 	// If L is a label, resolve it first
 	// Return sequence: xor rd, rd, rd then mov/shftli chain
-	return NULL;
+	return buffer;
 }
 
 // in rd, rs -> priv rd, rs, r0, 0x3
