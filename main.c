@@ -264,7 +264,7 @@ testingReturnType processLine(char *lineInput)
 		// add new stuff only if new type so subsequent stuff gets combined
 		if (type != -1 && type != newType)
 		{
-			if (type == 1)
+			if (type == 1 && code.size > 0)
 			{
 				if (isFirstLineInOutput)
 				{
@@ -278,7 +278,7 @@ testingReturnType processLine(char *lineInput)
 				addString(&codeAndDataCombined, code.data);
 				sbClear(&code);
 			}
-			else if (type == 0)
+			else if (type == 0 && data.size > 0)
 			{
 				if (isFirstLineInOutput)
 				{
