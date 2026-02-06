@@ -35,7 +35,7 @@ void autoAdd(char *inputString);
 void autoAddMacro(char *inputString);
 
 PDArrayList listOfLabels;
-const char delimiters[] = ", ";
+const char delimiters[] = ", \t\n\r";
 
 // initialize some "string builders" and hope 5k chars is enough
 char code[5000] = {0};
@@ -194,7 +194,22 @@ testingReturnType processLine(char *lineInput)
 	}
 	else if ((lineInput[0]) == '.')
 	{ // either .code or .data
-		if (type != -1)
+		int newType = -1;
+		if (strncmp(lineInput, ".data", 5) == 0)
+		{
+			newType = 0;
+		}
+		else if (strncmp(lineInput, ".code", 5) == 0)
+		{
+			newType = 1;
+		}
+		else
+		{
+			throwError("ERROR! INVALID LINE STARTING WITH DOT!");
+		}
+
+		// add new stuff only if new type so subsequent stuff gets combined
+		if (type != -1 && type != newType)
 		{
 			if (type == 1)
 			{
@@ -226,20 +241,11 @@ testingReturnType processLine(char *lineInput)
 			}
 		}
 
-		if (strncmp(lineInput, ".data", 5) == 0)
+		tempThingy.type = newType;
+		type = newType;
+		if (newType == 1)
 		{
-			tempThingy.type = 0;
-			type = 0;
-		}
-		else if (strncmp(lineInput, ".code", 5) == 0)
-		{
-			tempThingy.type = 1;
-			type = 1;
 			hasSeenAtLeast1Code = 1;
-		}
-		else
-		{
-			throwError("ERROR! INVALID LINE STARTING WITH DOT!");
 		}
 	}
 	else if (lineInput[0] == '\n')
@@ -560,7 +566,7 @@ void runTests()
 // halt
 char *convertHaltMacro(char *input)
 {
-	return "priv r0, r0, r0, 0x0";
+	return "\n\tpriv r0, r0, r0, 0x0";
 }
 
 // clr rd
