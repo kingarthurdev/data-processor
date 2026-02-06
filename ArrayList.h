@@ -4,18 +4,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+//pd stands for preprocessorDirective
 typedef struct PD {
     char *thingToReplace;
     char *replacementString;
 } PD;
 
-typedef struct {
+typedef struct PDArrayList {
     PD **data;
     int capacity;
     int size;
 } PDArrayList;
 
 void newPDArrayList(PDArrayList *list);
-void addNode(PDArrayList *list, PD *item);
+void addPD(PDArrayList *list, PD *item);
 
 #endif

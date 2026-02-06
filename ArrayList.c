@@ -1,18 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-
-//pd stands for preprocessorDirective
-typedef struct PD{
-    char *thingToReplace;
-    char *replacementString;
-} PD;
-
-typedef struct PD
-{
-    PD **data;
-    int capacity;
-    int size;
-} PDArrayList;
+#include "ArrayList.h"
 
 void newPDArrayList(PDArrayList *list)
 {
