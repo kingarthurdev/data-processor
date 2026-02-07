@@ -8,3 +8,6 @@ You can compile this program by running the ```build.sh``` file in the top direc
 
 ### Execution
 After compiling the program, you can run it by changing your directory to that of the program, then running ```./programNameHere inputPathHere intermediateOutputPathHere binaryOutputPathHere``` 
+
+### Tests
+The test are in the file tests.c, and can be run with the runTests() function.
