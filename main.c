@@ -68,6 +68,7 @@ int startsWith(char *searchString, char *string);
 int startsWith2(char *inputString, char *searchStrings[], int numStrings);
 void stripChars(char *input, char charToStrip);
 void validateArgs(char *lineInput, int formatType);
+void validateLiteral(long long value, int isUnsigned);
 void incrementBytes(int type);
 void runTests();
 
@@ -479,6 +480,24 @@ void stripChars(char *input, char charToStrip)
 	input[counterIndex] = '\0';
 }
 
+void validateLiteral(long long value, int isUnsigned)
+{
+	if (isUnsigned)
+	{
+		if (value <= 0 || value >= 4095)
+		{
+			throwError("ERROR! Literal out of unsigned 12-bit range!");
+		}
+	}
+	else
+	{
+		if (value <= -2048 || value >= 2047)
+		{
+			throwError("ERROR! Literal out of signed 12-bit range!");
+		}
+	}
+}
+
 // Returns expected arg count for a format type
 int getExpectedArgCount(int formatType)
 {
@@ -545,6 +564,11 @@ void validateArgs(char *lineInput, int formatType)
 	else if (formatType == FMT_RL)
 	{
 		parseReg(args[0]);
+		if (args[1][0] != ':')
+		{
+			long long lit = strtoll(args[1], NULL, 0);
+			validateLiteral(lit, 1);
+		}
 	}
 	else if (formatType == FMT_R)
 	{
@@ -555,19 +579,74 @@ void validateArgs(char *lineInput, int formatType)
 		parseReg(args[0]);
 		parseReg(args[1]);
 		parseReg(args[2]);
+		if (args[3][0] != ':')
+		{
+			long long lit = strtoll(args[3], NULL, 0);
+			validateLiteral(lit, 1);
+		}
 	}
 	else if (formatType == FMT_MOV)
 	{
 		if (args[0][0] == '(')
 		{
+			char *firstClose = strchr(args[0] + 1, ')');
+			if (!firstClose)
+			{
+				throwError("ERROR! Invalid mov format!");
+			}
+			char *secondParen = strchr(firstClose + 1, '(');
+			if (!secondParen)
+			{
+				throwError("ERROR! Invalid mov format!");
+			}
+			char *secondClose = strchr(secondParen + 1, ')');
+			if (!secondClose || *(secondClose + 1) != '\0')
+			{
+				throwError("ERROR! Invalid mov format!");
+			}
+			long long lit = strtoll(secondParen + 1, NULL, 0);
+			validateLiteral(lit, 0);
 			char *temp = args[0] + 1;
-			char *end = strchr(temp, ')'); //replace the ending paren with null to cut string
-			if (end) *end = '\0';
+			*firstClose = '\0';
 			parseReg(temp);
 		}
 		else
 		{
 			parseReg(args[0]);
+			if (args[1][0] == '(')
+			{
+				char *firstClose = strchr(args[1] + 1, ')');
+				if (!firstClose)
+				{
+					throwError("ERROR! Invalid mov format!");
+				}
+				char *secondParen = strchr(firstClose + 1, '(');
+				if (!secondParen)
+				{
+					throwError("ERROR! Invalid mov format!");
+				}
+				char *secondClose = strchr(secondParen + 1, ')');
+				if (!secondClose || *(secondClose + 1) != '\0')
+				{
+					throwError("ERROR! Invalid mov format!");
+				}
+				char regBuf[8];
+				size_t regLen = firstClose - (args[1] + 1);
+				if (regLen >= sizeof(regBuf))
+				{
+					throwError("ERROR! Invalid register!");
+				}
+				strncpy(regBuf, args[1] + 1, regLen);
+				regBuf[regLen] = '\0';
+				parseReg(regBuf);
+				long long lit = strtoll(secondParen + 1, NULL, 0);
+				validateLiteral(lit, 0);
+			}
+			else if (args[1][0] != 'r' && args[1][0] != 'R')
+			{
+				long long lit = strtoll(args[1], NULL, 0);
+				validateLiteral(lit, 1);
+			}
 		}
 	}
 	else if (formatType == FMT_R_OR_L)
@@ -575,6 +654,16 @@ void validateArgs(char *lineInput, int formatType)
 		if (args[0][0] == 'r' || args[0][0] == 'R')
 		{
 			parseReg(args[0]);
+		}
+		else if (args[0][0] != ':')
+		{
+			char *end;
+			long long lit = strtoll(args[0], &end, 0);
+			if (*end != '\0')
+			{
+				throwError("ERROR! Invalid literal format!");
+			}
+			validateLiteral(lit, 0);
 		}
 	}
 
