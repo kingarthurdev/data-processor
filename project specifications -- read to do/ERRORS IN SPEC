@@ -1,0 +1,6 @@
+Spec Errata:
+
+Call instruction should be call rd, not call rd, rs, rt
+
+In the example in the spec, halt should expand to the priv instruction format, not trap 0x0
+

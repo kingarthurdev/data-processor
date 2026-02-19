@@ -1,0 +1,61 @@
+
+
+
+cd hw3-int-suite || exit 1
+cd tests
+
+ls -a
+
+cd all_inputs
+echo "inside all inputs"
+ls -a
+
+cd all-together
+echo "inside all together"
+ls -a
+echo "inside valid.tk:"
+cat valid.tk
+
+
+cd ../../
+cd ./generated_inputs/valid/all-together
+ls -a
+
+echo "inside valid.ph1"
+cat valid.ph1
+
+echo "inside valid.tk"
+cat valid.tk
+
+#find . -type d -exec echo "Directory: {}" \; -exec sh -c 'find "{}" -maxdepth 5 -type f -exec cat {} \;' \;
+
+
+
+
+
+
+./hw3-int-suite/tests/all_inputs/single-macro/ld/invalid1.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/addi/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/addi/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/brr_l/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/brr_l/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_mr/valid1.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_mr/valid1.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_mr/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_mr/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rl/valid1.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rl/valid1.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rm/valid1.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rm/valid1.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rm/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rm/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/shftli/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/shftli/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/shftri/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/shftri/valid2.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rr/valid1.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rr/valid1.tk
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rr/valid2.ph1
+./hw3-tko-suite/tests/generated_inputs/valid/single-instr/mov_rr/valid2.tk
+./hw3-int-suite/tests/all_inputs/single-instr/mov_rr/invalid2.tk
+./hw3-int-suite/tests/all_inputs/single-instr/mov_rr/invalid4.tk

@@ -1,0 +1,5 @@
+.code
+	ld r1, 0
+	ld r2, 500 
+	mov (r1)(0), r2
+	halt

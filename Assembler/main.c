@@ -1,5 +1,6 @@
 #include "main.h"
 #include <errno.h>
+#include "tests.h"
 
 void newStringBuilder(StringBuilder *sb)
 {
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		processInputFile(inputFilePath);
+		printf("TEST MODE!\n");
 		runTests();
 	}
 
@@ -192,7 +193,7 @@ testingReturnType processLine(char *lineInput)
 	}
 	else if ((lineInput[0]) == ':') // label found
 	{
-		if (lineInput[1] != 'L')
+		if (strlen(lineInput) != 4)
 		{
 			throwError("ERROR! INVALID LABEL FORMAT!");
 		}
@@ -503,9 +504,23 @@ void validateArgs(char *lineInput, int formatType)
 		parseReg(args[0]);
 		if (args[1][0] != ':')
 		{
-			printf("temp: %s", typeToken);
+			errno = 0;
 			long long lit = strtoll(args[1], NULL, 0);
-			validateLiteral(lit, 1);
+			if (errno != 0)
+			{
+				throwError("ERROR! invalid ld literal!");
+			}
+			if (strcmp("ld", typeToken) != 0)
+			{
+				validateLiteral(lit, 1);
+			}
+			else
+			{
+				if (lit > 0xFFFFFFFFFFFFFFFF || lit < 0)
+				{
+					throwError("ERROR! invalid ld literal");
+				}
+			}
 		}
 	}
 	else if (formatType == FMT_R)
@@ -586,7 +601,7 @@ void validateArgs(char *lineInput, int formatType)
 				char *end;
 				errno = 0;
 				long long lit = strtoll(args[1], &end, 0);
-				if (errno != 0|| *end != '\0' || end == &args[1][0])
+				if (errno != 0 || *end != '\0' || end == &args[1][0])
 				{
 					throwError("ERROR! Invalid mov format!");
 				}
@@ -608,7 +623,7 @@ void validateArgs(char *lineInput, int formatType)
 		{
 			char *end;
 			long long lit = strtoll(args[0], &end, 0);
-			if ( *end != '\0' || end == &args[0][0])
+			if (*end != '\0' || end == &args[0][0])
 			{
 				throwError("ERROR! Invalid literal format!");
 			}
@@ -1275,7 +1290,6 @@ uint8_t parseReg(char *registry)
 	{
 		throwError("ERROR! Register must start with 'r'!");
 	}
-	printf("reg val: %s\n", registry);
 
 	char *end;
 	errno = 0;

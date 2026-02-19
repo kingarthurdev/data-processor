@@ -1,0 +1,76 @@
+Submission Instructions:
+There are 4 main deliverables:
+
+Your source code
+
+Your testing code
+
+You don't need to use a specific framework, but you should write separate code that tests parts of your source code (i.e., methods structured as test cases)
+
+This will be graded on effort
+
+A build.sh script in the top directory of your submission that compiles your code into a file named exactly "hw4" in the top directory
+
+A README with your name and EID, as well as instructions on how to compile and run your code
+
+Submit to Gradescope
+
+You can submit as a zip or through Github
+
+Review tests that you missed. There may be hidden tests
+
+
+Clarifications:
+Disclaimer: Many, if not all, of these requirements are an oversimplification of reality
+
+Input: the input .tko filepath (passed as a command line argument)
+
+If there is no argument filepath, the argument filepath is invalid, or you can't open the ".tko" file, your program should exit with non-zero status and print the following to stderr:
+
+Invalid tinker filepath
+Output: the output of the tinker program (print to stdout)
+
+Setup:
+
+Simulated memory should initialize to being 0-filled 
+
+Load the program at simulated address 0x1000
+
+Set program counter to 0x1000 before starting execution
+
+Set stack pointer (r31) to MEM_SIZE (which is 512 KiB) before starting execution
+
+Simulation:
+
+Your simulator should not segfault, regardless of the input .tko file
+
+If input/output port is not 0/1 respectively, it should just do nothing and move to the next instruction, since it is as if there is nothing connected to the port. In reality, it's generally more complicated than this. but let's keep it simple
+
+We should be able to simulate the program again and again and have it produce the same output each time. Please test that your implementation allows this (i.e., do NOT consume the input file)
+
+All input/output should be read in and printed as 64 bit unsigned integers
+
+Don't prompt anything anywhere. The only thing that should be printed is the output from out
+
+Errors: the simulator should stop and exit with non-zero status and print the following message to stderr:
+
+Simulation error
+Examples of errors (may not be exhaustive):
+
+You come across an invalid instruction
+
+The program tries to read a bad memory address (<0 or >=MEM_SIZE)
+
+Division by 0 (for div and divf)
+
+Input is not a 64 bit unsigned integer
+
+
+Recommendations:
+Review the CPU execution model from class and from discussion week 3
+
+Make a plan on how state will flow and update throughout your program
+
+Note: whether or not the tinker program is a "good" program does not affect your simulator. For example, writing C code with an infinite loop is the programmer's fault, not your CPU's fault for not knowing your program has an infinite loop
+
+Example: the .tk program started with .data; your simulator will still start reading from 0x1000 and treat the bits as an instruction
