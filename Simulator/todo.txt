@@ -1,9 +1,0 @@
-need to read in the file, four? bytes at a time, setting a var equal to each fixed length
-segment. For that segment, eval the action based on the opcode, probably a large if else statement
-for determining which function to actually do with the data
-
--- some will be simple, just add, sub, etc
--- others will take more time like the call instruction that does something with the stack...
--- need to simulate a virtual stack using an array I think -- as you add new items to the stack, 
-you also increment the length, and you search starting from the end of the array
--- BUT you also need to implement deleting from the stack + shifting all the indices 

@@ -1,0 +1,90 @@
+.code
+	clr r0
+	in r1, r0
+	mov r2, r1
+	ld r15, 3
+	ld r3, :DL
+	ld r10, :PU
+	ld r11, :PL
+	ld r12, :SL
+	ld r13, :NF
+	ld r14, :F1
+	ld r7, 4096
+	ld r17, 8
+	mov r6, r7
+	call r3 
+	in r5, r0
+	mov r2, r1
+	clr r9
+:SL
+	brgt r13, r9, r2
+	clr r8
+	add r8, r2, r9
+	shftri r8, 1
+	mul r16, r8, r17
+	add r16, r6, r16
+	mov r16, (r16)(0)
+	brgt r10, r5, r16
+	brgt r11, r16, r5
+	br r14 
+:PL
+	subi r8, 1
+	mov r2, r8
+	br r12 
+:PU
+	addi r8, 1
+	mov r9, r8
+	br r12 
+:DL
+	in r8, r0
+	mov (r7)(0), r8
+	addi r7, 8
+	subi r2, 1
+	brnz r3, r2
+	return
+:F1
+	clr r2
+	addi r2, 102
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 117
+	out r15, r2
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 100
+	out r15, r2
+	halt
+:NF
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 116
+	out r15, r2
+	clr r2
+	addi r2, 32
+	out r15, r2
+	clr r2
+	addi r2, 102
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 117
+	out r15, r2
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 100
+	out r15, r2
+	halt

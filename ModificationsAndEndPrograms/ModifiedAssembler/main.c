@@ -52,8 +52,10 @@ int type = -1;
 // 0 for false, 1 for true
 int hasSeenAtLeast1Code = 0;
 
-// count # of prior instructions (starting at 0x1000 since that's where the program starts)
+// count # of prior instructions
 long long memNumBytes = 0x2000;
+long long codeMemPos = 0x2000;
+long long dataMemPos = 0x10000;
 
 int numRuns = 0; // 0 for the first run, 1 for the next (so we can preeval all the labels)
 
@@ -118,6 +120,8 @@ void processInputFile(char *inputFilePath)
 		rewind(file);
 		type = -1;
 		memNumBytes = 0x2000;
+		codeMemPos = 0x2000;
+		dataMemPos = 0x10000;
 
 		// run again to actually write the data after the symbol table has been generated
 		while (fgets(line, BUFFER_SIZE, file) != NULL)
@@ -226,6 +230,10 @@ testingReturnType processLine(char *lineInput)
 		}
 
 		tempThingy.type = newType;
+		if (type == 1) codeMemPos = memNumBytes;
+		else if (type == 0) dataMemPos = memNumBytes;
+		if (newType == 1) memNumBytes = codeMemPos;
+		else if (newType == 0) memNumBytes = dataMemPos;
 		type = newType;
 		if (newType == 1)
 		{

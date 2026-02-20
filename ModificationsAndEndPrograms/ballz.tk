@@ -1,0 +1,3 @@
+.code
+	clr r0
+	halt

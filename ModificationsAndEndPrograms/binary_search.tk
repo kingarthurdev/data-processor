@@ -1,0 +1,102 @@
+.code
+;load num of items
+	clr r0
+;holds the number of elements, also can be the tail item
+	in r1, r0
+	mov r2, r1
+;the output port
+	ld r15, 3
+	ld r3, :data_loader
+	ld r10, :pick_upper
+	ld r11, :pick_lower
+	ld r12, :search_loop
+	ld r13, :not_found
+	ld r14, :found
+	ld r7, 4096
+	ld r17, 8
+;make a copy of r7 to act as the base address
+	mov r6, r7
+;call the data loader. Afterwards, r7 holds the address of the last element
+	call r3 
+;intake the number we're looking for
+	in r5, r0
+;reset r2 as the max
+	mov r2, r1
+	clr r9
+;act as the 1st index, the min
+:search_loop
+	brgt r13, r9, r2
+;basically making it the middle index 
+	clr r8
+	add r8, r2, r9
+	shftri r8, 1
+	mul r16, r8, r17
+	add r16, r6, r16
+	mov r16, (r16)(0)
+	brgt r10, r5, r16
+	brgt r11, r16, r5
+	br r14 
+:pick_lower
+	subi r8, 1
+	mov r2, r8
+	br r12 
+:pick_upper
+	addi r8, 1
+	mov r9, r8
+	br r12 
+:data_loader
+;load in end of data segment
+	in r8, r0
+;move the loaded in number into the next memory segment over, then increment by 8 bytes
+	mov (r7)(0), r8
+	addi r7, 8
+	subi r2, 1
+;jump back to start of the loop if r2 (num items left != 0)
+	brnz r3, r2
+	return
+:found
+	clr r2
+	addi r2, 102
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 117
+	out r15, r2
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 100
+	out r15, r2
+	halt
+:not_found
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 116
+	out r15, r2
+	clr r2
+	addi r2, 32
+	out r15, r2
+	clr r2
+	addi r2, 102
+	out r15, r2
+	clr r2
+	addi r2, 111
+	out r15, r2
+	clr r2
+	addi r2, 117
+	out r15, r2
+	clr r2
+	addi r2, 110
+	out r15, r2
+	clr r2
+	addi r2, 100
+	out r15, r2
+	halt

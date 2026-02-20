@@ -1,0 +1,3 @@
+.code
+	xor r5, r5, r5
+	halt

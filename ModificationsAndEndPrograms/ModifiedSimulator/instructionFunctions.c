@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-#include "main.h"
+#include "modifiedSimulator.h"
 
 #define startingAddress 0x1000
 static uint64_t *staticRegisters;
@@ -150,8 +150,12 @@ void priv(uint8_t rd, uint8_t rs, uint8_t rt, uint32_t L)
 	{
 		*staticProgramCounter += 4;
 		if (staticRegisters[rd] == 1)
-		{ // the only valid output port for this prog
-			printf("%llu\n", staticRegisters[rs]);
+		{
+			printf("%lu\n", staticRegisters[rs]);
+		}
+		else if (staticRegisters[rd] == 3)
+		{
+			printf("%c", (char)staticRegisters[rs]);
 		}
 	}
 	else
